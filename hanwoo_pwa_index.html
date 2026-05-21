@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>한우 로스율 앱</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#111;max-width:480px;margin:0 auto}
+.tab-bar{display:flex;background:#fff;border-bottom:1px solid #e5e5e5;position:sticky;top:0;z-index:10}
+.tab{flex:1;padding:12px 0;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:#888;border-bottom:2px solid transparent}
+.tab.active{color:#111;border-bottom:2px solid #111}
+.screen{display:none;padding:16px}.screen.active{display:block}
+.sec{font-size:11px;font-weight:600;color:#888;letter-spacing:.06em;text-transform:uppercase;margin:16px 0 8px}
+.sec:first-child{margin-top:0}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:#666;margin-bottom:4px}
+.field input,.field select{width:100%;padding:10px 12px;font-size:15px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#111;-webkit-appearance:none}
+.field input:focus,.field select:focus{outline:none;border-color:#111}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.auto-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.ac{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px}
+.ac-label{font-size:11px;color:#888;margin-bottom:3px}
+.ac-val{font-size:18px;font-weight:600;color:#111}
+.ac-val.pos{color:#16a34a}.ac-val.neg{color:#dc2626}
+.ac-full{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.save-btn{width:100%;padding:14px;background:#111;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-top:6px}
+.save-btn:active{opacity:.8}
+.save-btn.edit-mode{background:#2563eb}
+.cancel-btn{width:100%;padding:12px;background:#fff;color:#666;border:1px solid #e0e0e0;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;margin-top:8px}
+.record{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:14px;margin-bottom:10px}
+.rec-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.rec-title{font-size:16px;font-weight:600}.rec-date{font-size:12px;color:#888}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.chip{font-size:11px;padding:3px 8px;border-radius:99px;background:#f3f3f3;color:#555}
+.rec-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;background:#f9f9f9;border-radius:8px;padding:10px 6px}
+.sv{font-size:14px;font-weight:600}.sl{font-size:10px;color:#888;margin-top:2px}
+.rec-actions{display:flex;gap:8px;margin-top:10px;border-top:1px solid #f0f0f0;padding-top:10px}
+.action-btn{flex:1;padding:8px;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;border:1px solid #e0e0e0;background:#fff;color:#555}
+.action-btn.edit{color:#2563eb;border-color:#bfdbfe}
+.action-btn.del{color:#dc2626;border-color:#fecaca}
+.empty{text-align:center;padding:60px 20px;color:#aaa;font-size:14px}
+.empty-icon{font-size:40px;margin-bottom:10px}
+.sum-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:14px;margin-bottom:10px}
+.sum-title{font-size:15px;font-weight:600;margin-bottom:10px}
+.sum-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.sum-row:last-child{border-bottom:none}
+.sum-k{color:#666}.sum-v{font-weight:600}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:9px 22px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1}
+.edit-banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#1d4ed8;font-weight:500}
+.memo-text{font-size:12px;color:#888;margin-top:8px;border-top:1px solid #f0f0f0;padding-top:8px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="원가관리">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#1F3864">
+</head>
+<body>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="goTab('input')">✏️ 입력</div>
+  <div class="tab" onclick="goTab('list')">📋 기록</div>
+  <div class="tab" onclick="goTab('summary')">📊 요약</div>
+  <div class="tab" onclick="goTab('waste')">🗑 폐기</div>
+</div>
+
+<div id="s-input" class="screen active">
+  <div id="edit-banner" class="edit-banner" style="display:none">✏️ 수정 모드 — 변경 후 저장하세요</div>
+
+  <div class="sec">기본정보</div>
+  <div class="row2">
+    <div class="field"><label>날짜</label><input type="date" id="i-date"></div>
+    <div class="field"><label>부위</label>
+      <select id="i-part" onchange="toggleCustom()">
+        <option value="">선택</option>
+        <option>등심</option><option>꽃등심</option><option>윗등심</option><option>아랫등심</option>
+        <option>채끝</option><option>안심</option><option>앞다리</option><option>목심</option>
+        <option>갈비</option><option>LA갈비</option><option>설도</option><option>우둔</option>
+        <option>사태</option><option>양지</option><option>부채살</option><option>안창살</option>
+        <option>제비추리</option><option>치마살</option><option>직접입력</option>
+      </select>
+    </div>
+  </div>
+  <div id="custom-wrap" style="display:none" class="field">
+    <label>부위 직접입력</label><input type="text" id="i-custom" placeholder="부위명 입력">
+  </div>
+  <div class="row2">
+    <div class="field"><label>등급</label>
+      <select id="i-grade">
+        <option value="">선택</option>
+        <option>1++(9)</option><option>1++(8)</option><option>1++(7)</option>
+        <option>1+</option><option>1</option><option>2</option><option>3</option>
+        <option>초이스</option><option>프라임</option>
+      </select>
+    </div>
+    <div class="field"><label>매입단가 (원/kg)</label>
+      <input type="number" id="i-bp" placeholder="0" inputmode="numeric" oninput="calc()">
+    </div>
+  </div>
+
+  <div class="sec">중량</div>
+  <div class="row2">
+    <div class="field"><label>매입중량 (kg)</label><input type="number" id="i-w" placeholder="0.00" step="0.01" inputmode="decimal" oninput="calc()"></div>
+    <div class="field"><label>작업전 실측 (g)</label><input type="number" id="i-mw" placeholder="0" step="1" inputmode="numeric" oninput="calc()"></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>로스중량 (g)</label><input type="number" id="i-l" placeholder="0" step="1" inputmode="numeric" oninput="calc()"></div>
+    <div class="field"><label></label><div style="padding-top:22px;font-size:12px;color:#888" id="o-moisture">수분로스: -</div></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>전환로스1 (g)</label><input type="number" id="i-c1" placeholder="0" step="1" inputmode="numeric" oninput="calc()"></div>
+    <div class="field"><label>전환로스2 (g)</label><input type="number" id="i-c2" placeholder="0" step="1" inputmode="numeric" oninput="calc()"></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>전환로스3 (g)</label><input type="number" id="i-c3" placeholder="0" step="1" inputmode="numeric" oninput="calc()"></div>
+    <div class="field"></div>
+  </div>
+
+  <div class="sec">판매단가 (원/100g)</div>
+  <div class="row2">
+    <div class="field"><label>판매단가</label><input type="number" id="i-sp" placeholder="0" inputmode="numeric" oninput="calc()"></div>
+    <div class="field"><label>전환로스1 판매가</label><input type="number" id="i-c1p" placeholder="0" inputmode="numeric" oninput="calc()"></div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>전환로스2 판매가</label><input type="number" id="i-c2p" placeholder="0" inputmode="numeric" oninput="calc()"></div>
+    <div class="field"><label>전환로스3 판매가</label><input type="number" id="i-c3p" placeholder="0" inputmode="numeric" oninput="calc()"></div>
+  </div>
+
+  <div class="sec">자동계산</div>
+  <div class="auto-grid">
+    <div class="ac"><div class="ac-label">생산중량</div><div class="ac-val" id="o-prod">-</div></div>
+    <div class="ac"><div class="ac-label">총매입가</div><div class="ac-val" id="o-tbuy">-</div></div>
+    <div class="ac"><div class="ac-label">실제원가 (원/kg)</div><div class="ac-val" id="o-cost">-</div></div>
+    <div class="ac"><div class="ac-label">로스율</div><div class="ac-val" id="o-lrate">-</div></div>
+    <div class="ac"><div class="ac-label">수분로스율</div><div class="ac-val" id="o-mrate">-</div></div>
+    <div class="ac"><div class="ac-label">총판매액</div><div class="ac-val" id="o-tsell">-</div></div>
+    <div class="ac"><div class="ac-label">마진</div><div class="ac-val" id="o-mg">-</div></div>
+  </div>
+  <div class="ac-full">
+    <span style="font-size:14px;font-weight:600;color:#666">마진율</span>
+    <div class="ac-val" id="o-mgr" style="font-size:26px">-</div>
+  </div>
+
+  <div class="field"><label>비고</label><input type="text" id="i-memo" placeholder="메모 (선택)"></div>
+  <button class="save-btn" id="save-btn" onclick="saveRec()">저장하기</button>
+  <button class="cancel-btn" id="cancel-btn" style="display:none" onclick="cancelEdit()">취소</button>
+</div>
+
+<div id="s-list" class="screen"><div id="list-wrap"></div></div>
+<div id="s-summary" class="screen">
+  <div style="display:flex;background:#f3f3f3;border-radius:10px;padding:3px;margin-bottom:14px">
+    <button id="sum-tab-part" onclick="setSumTab('part')" style="flex:1;padding:7px;font-size:13px;font-weight:500;border:none;border-radius:8px;cursor:pointer;background:#111;color:#fff">부위별</button>
+    <button id="sum-tab-detail" onclick="setSumTab('detail')" style="flex:1;padding:7px;font-size:13px;font-weight:500;border:none;border-radius:8px;cursor:pointer;background:transparent;color:#888">부위+등급별</button>
+  </div>
+  <div style="background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:14px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:600">목표 마진율</span>
+      <span style="font-size:20px;font-weight:700;color:#16a34a" id="margin-target-label">25%</span>
+    </div>
+    <input type="range" id="margin-slider" min="5" max="60" value="25" step="1"
+      style="width:100%;accent-color:#111"
+      oninput="updateMarginSlider()">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px">
+      <span>5%</span><span>60%</span>
+    </div>
+  </div>
+  <div id="sum-wrap"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">
+    <button onclick="exportExcel()" style="padding:14px;background:#1d4ed8;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer">📥 엑셀 저장</button>
+    <button onclick="saveToGDrive()" style="padding:14px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer">☁️ 구글 드라이브</button>
+  </div>
+</div>
+
+<div id="s-waste" class="screen">
+  <div class="sec" style="margin-top:0">폐기 입력</div>
+  <div class="row2">
+    <div class="field"><label>날짜</label><input type="date" id="w-date"></div>
+    <div class="field"><label>부위</label>
+      <select id="w-part">
+        <option value="">선택</option>
+        <option>등심</option><option>꽃등심</option><option>윗등심</option><option>아랫등심</option>
+        <option>채끝</option><option>안심</option><option>앞다리</option><option>목심</option>
+        <option>갈비</option><option>LA갈비</option><option>설도</option><option>우둔</option>
+        <option>사태</option><option>양지</option><option>부채살</option><option>안창살</option>
+        <option>제비추리</option><option>치마살</option><option>직접입력</option>
+      </select>
+    </div>
+  </div>
+  <div id="w-custom-wrap" style="display:none" class="field">
+    <label>부위 직접입력</label><input type="text" id="w-custom" placeholder="부위명 입력">
+  </div>
+  <div class="row2">
+    <div class="field"><label>등급</label>
+      <select id="w-grade">
+        <option value="">선택</option>
+        <option>1++(9)</option><option>1++(8)</option><option>1++(7)</option>
+        <option>1+</option><option>1</option><option>2</option><option>3</option>
+        <option>초이스</option><option>프라임</option>
+      </select>
+    </div>
+    <div class="field"><label>매입단가 (원/kg)</label>
+      <input type="number" id="w-bp" placeholder="0" inputmode="numeric" oninput="calcWaste()">
+    </div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>폐기중량 (g)</label>
+      <input type="number" id="w-amt" placeholder="0" step="1" inputmode="numeric" oninput="calcWaste()">
+    </div>
+    <div class="field"><label>폐기사유</label>
+      <select id="w-reason">
+        <option value="">선택</option>
+        <option>유통기한</option><option>변색</option><option>재고과다</option><option>기타</option>
+      </select>
+    </div>
+  </div>
+  <div class="ac-full" style="margin-top:4px;margin-bottom:14px">
+    <span style="font-size:14px;font-weight:600;color:#666">폐기손실액</span>
+    <div class="ac-val neg" id="w-loss-amt" style="font-size:24px">-</div>
+  </div>
+  <div class="field"><label>비고</label><input type="text" id="w-memo" placeholder="메모 (선택)"></div>
+  <button class="save-btn" style="background:#dc2626" onclick="saveWaste()">폐기 기록</button>
+
+  <div class="sec">폐기 기록</div>
+  <div id="waste-list"></div>
+
+  <div class="sec">요약</div>
+  <div style="display:flex;background:#f3f3f3;border-radius:10px;padding:3px;margin-bottom:12px">
+    <button id="waste-tab-month" onclick="setWasteTab('month')" style="flex:1;padding:7px;font-size:13px;font-weight:500;border:none;border-radius:8px;cursor:pointer;background:#111;color:#fff">이번 달</button>
+    <button id="waste-tab-total" onclick="setWasteTab('total')" style="flex:1;padding:7px;font-size:13px;font-weight:500;border:none;border-radius:8px;cursor:pointer;background:transparent;color:#888">전체 누적</button>
+  </div>
+  <div id="waste-summary"></div>
+</div>
+
+<div class="toast" id="toast-el"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const vn=id=>parseFloat($(id).value)||0;
+let editId=null;
+
+function goTab(n){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['input','list','summary','waste'][i]===n));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $('s-'+n).classList.add('active');
+  if(n==='list')renderList();
+  if(n==='summary')renderSum();
+  if(n==='waste')renderWaste();
+}
+
+function toggleCustom(){
+  $('custom-wrap').style.display=$('i-part').value==='직접입력'?'block':'none';
+}
+
+function calc(){
+  const w=vn('i-w'),mw=vn('i-mw')/1000,l=vn('i-l')/1000,c1=vn('i-c1')/1000,c2=vn('i-c2')/1000,c3=vn('i-c3')/1000;
+  const bp=vn('i-bp'),sp=vn('i-sp'),c1p=vn('i-c1p'),c2p=vn('i-c2p'),c3p=vn('i-c3p');
+  const base=mw||w;
+  const prod=base-l-c1-c2-c3;
+  const tbuy=w*bp;
+  const tsell=prod*sp*10+c1*c1p*10+c2*c2p*10+c3*c3p*10;
+  const mg=tsell-tbuy;
+  const mgr=tsell>0?mg/tsell*100:null;
+  const lrate=base>0?l/base*100:null;
+  const cost=prod>0&&bp?tbuy/prod:null;
+  const moistureLoss=mw&&w?w-mw:null;
+  const mrate=moistureLoss!=null&&w>0?moistureLoss/w*100:null;
+
+  $('o-prod').textContent=base?prod.toFixed(2)+'kg':'-';
+  $('o-tbuy').textContent=w&&bp?Math.round(tbuy).toLocaleString()+'원':'-';
+  $('o-cost').textContent=cost?Math.round(cost).toLocaleString()+'원':'-';
+  $('o-lrate').textContent=lrate!=null?lrate.toFixed(1)+'%':'-';
+  $('o-mrate').textContent=mrate!=null?mrate.toFixed(1)+'%':'-';
+  $('o-moisture').textContent=moistureLoss!=null?'수분로스: '+Math.round(moistureLoss*1000)+'g':' ';
+  $('o-tsell').textContent=sp?Math.round(tsell).toLocaleString()+'원':'-';
+  const mEl=$('o-mg');
+  mEl.textContent=sp&&bp?Math.round(mg).toLocaleString()+'원':'-';
+  mEl.className='ac-val'+(mg>0?' pos':mg<0?' neg':'');
+  const mrEl=$('o-mgr');
+  mrEl.textContent=mgr!=null?mgr.toFixed(1)+'%':'-';
+  mrEl.className='ac-val'+(mgr>0?' pos':mgr<0?' neg':'');
+}
+
+function getRecs(){try{return JSON.parse(localStorage.getItem('hw_recs')||'[]')}catch(e){return[]}}
+function setRecs(r){localStorage.setItem('hw_recs',JSON.stringify(r))}
+
+function buildRec(id){
+  const part=$('i-part').value==='직접입력'?$('i-custom').value.trim():$('i-part').value;
+  const w=vn('i-w'),mw_g=vn('i-mw'),l_g=vn('i-l'),c1_g=vn('i-c1'),c2_g=vn('i-c2'),c3_g=vn('i-c3');
+  const mw=mw_g/1000,l=l_g/1000,c1=c1_g/1000,c2=c2_g/1000,c3=c3_g/1000;
+  const bp=vn('i-bp'),sp=vn('i-sp'),c1p=vn('i-c1p'),c2p=vn('i-c2p');
+  const base=mw||w;
+  const prod=base-l-c1-c2-c3;
+  const tbuy=w*bp;
+  const tsell=prod*sp*10+c1*c1p*10+c2*c2p*10+c3*c3p*10;
+  const mg=sp&&bp?tsell-tbuy:null;
+  const mgr=tsell>0&&mg!=null?mg/tsell*100:null;
+  const moistureLoss=mw&&w?w-mw:null;
+  const mrate=moistureLoss!=null&&w>0?moistureLoss/w*100:null;
+  return{
+    id:id||Date.now(),date:$('i-date').value||new Date().toISOString().slice(0,10),
+    part,grade:$('i-grade').value,bp,w,mw_g,l_g,c1_g,c2_g,c3_g,mw,l,c1,c2,c3,sp,c1p,c2p,c3p,moistureLoss,mrate,
+    prod,tbuy,tsell,mg,mgr,
+    lrate:base>0?l/base*100:0,
+    cost:prod>0&&bp?tbuy/prod:null,
+    memo:$('i-memo').value
+  };
+}
+
+function saveRec(){
+  const part=$('i-part').value==='직접입력'?$('i-custom').value.trim():$('i-part').value;
+  if(!part){toast('부위를 선택해주세요');return}
+  if(!vn('i-w')){toast('매입중량을 입력해주세요');return}
+
+  const recs=getRecs();
+  if(editId){
+    const idx=recs.findIndex(r=>r.id===editId);
+    if(idx>-1)recs[idx]=buildRec(editId);
+    setRecs(recs);
+    toast('수정됐어요!');
+    cancelEdit();
+  } else {
+    recs.unshift(buildRec(null));
+    setRecs(recs);
+    toast('저장됐어요!');
+    resetForm();
+  }
+}
+
+function editRec(id){
+  const rec=getRecs().find(r=>r.id===id);
+  if(!rec)return;
+  editId=id;
+
+  // 폼 채우기
+  $('i-date').value=rec.date||'';
+  const partOpts=[...document.querySelectorAll('#i-part option')].map(o=>o.value);
+  if(partOpts.includes(rec.part)){
+    $('i-part').value=rec.part;
+    $('custom-wrap').style.display='none';
+  } else {
+    $('i-part').value='직접입력';
+    $('i-custom').value=rec.part;
+    $('custom-wrap').style.display='block';
+  }
+  $('i-grade').value=rec.grade||'';
+  $('i-bp').value=rec.bp||'';
+  $('i-mw').value=rec.mw_g!=null?rec.mw_g:(rec.mw?Math.round(rec.mw*1000):'');
+  $('i-w').value=rec.w||'';
+  $('i-l').value=rec.l100!=null?rec.l100:(rec.l?Math.round(rec.l*10):'');
+  $('i-c1').value=rec.c1_g!=null?rec.c1_g:(rec.c1?Math.round(rec.c1*1000):'');
+  $('i-c2').value=rec.c2_g!=null?rec.c2_g:(rec.c2?Math.round(rec.c2*1000):'');
+  $('i-c3').value=rec.c3_g!=null?rec.c3_g:(rec.c3?Math.round(rec.c3*1000):'');
+  $('i-c3p').value=rec.c3p||'';
+  $('i-sp').value=rec.sp||'';
+  $('i-c1p').value=rec.c1p||'';
+  $('i-c2p').value=rec.c2p||'';
+  $('i-memo').value=rec.memo||'';
+
+  $('edit-banner').style.display='block';
+  $('save-btn').textContent='수정 저장';
+  $('save-btn').classList.add('edit-mode');
+  $('cancel-btn').style.display='block';
+  calc();
+  goTab('input');
+  window.scrollTo(0,0);
+}
+
+function cancelEdit(){
+  editId=null;
+  $('edit-banner').style.display='none';
+  $('save-btn').textContent='저장하기';
+  $('save-btn').classList.remove('edit-mode');
+  $('cancel-btn').style.display='none';
+  resetForm();
+}
+
+function resetForm(){
+  ['i-part','i-grade','i-bp','i-w','i-mw','i-l','i-c1','i-c2','i-c3','i-sp','i-c1p','i-c2p','i-c3p','i-memo','i-custom']
+  .forEach(id=>$(id).value='');
+  $('custom-wrap').style.display='none';
+  ['o-prod','o-tbuy','o-cost','o-lrate','o-tsell','o-mg','o-mgr'].forEach(id=>{
+    $(id).textContent='-';$(id).className='ac-val';
+  });
+  $('i-date').value=new Date().toISOString().slice(0,10);
+$('w-date').value=new Date().toISOString().slice(0,10);
+}
+
+function delRec(id){
+  if(!confirm('삭제할까요?'))return;
+  setRecs(getRecs().filter(r=>r.id!==id));
+  renderList();
+}
+
+function renderList(){
+  const recs=getRecs();
+  const el=$('list-wrap');
+  if(!recs.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>아직 기록이 없어요</div>';return;
+  }
+  el.innerHTML=recs.map(r=>`
+    <div class="record">
+      <div class="rec-head">
+        <div><div class="rec-title">${r.part}${r.grade?' · '+r.grade:''}</div><div class="rec-date">${r.date}</div></div>
+      </div>
+      <div class="chips">
+        ${r.w?`<span class="chip">매입 ${r.w}kg</span>`:''}
+        ${r.prod?`<span class="chip">생산 ${r.prod.toFixed(2)}kg</span>`:''}
+        ${r.bp?`<span class="chip">${Math.round(r.bp).toLocaleString()}원/kg</span>`:''}
+        ${r.mrate?`<span class="chip">수분 ${r.mrate.toFixed(1)}%</span>`:''}
+      </div>
+      <div class="rec-stats">
+        <div><div class="sv">${r.bp?Math.round(r.bp).toLocaleString()+'원':'-'}</div><div class="sl">매입가/kg</div></div>
+        <div><div class="sv">${r.lrate.toFixed(1)}%</div><div class="sl">로스율</div></div>
+        <div><div class="sv" style="color:${r.mgr==null?'#111':r.mgr>=0?'#16a34a':'#dc2626'}">${r.mgr!=null?r.mgr.toFixed(1)+'%':'-'}</div><div class="sl">마진율</div></div>
+      </div>
+      ${r.cost?`<div style="margin-top:10px;background:#fafafa;border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:11px;color:#888">마진율 조절</span>
+          <span style="font-size:13px;font-weight:700;color:#111" id="mgr-label-${r.id}">25%</span>
+        </div>
+        <input type="range" min="0" max="60" value="25" step="1"
+          style="width:100%;accent-color:#111"
+          oninput="calcBarMargin(${r.id}, ${r.cost}, ${r.prod}, ${r.tbuy}, this.value)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;text-align:center">
+          <div style="background:#fff;border-radius:8px;padding:8px;border:1px solid #e8e8e8">
+            <div style="font-size:15px;font-weight:700;color:#111" id="price-label-${r.id}">-</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">판매가/100g</div>
+          </div>
+          <div style="background:#fff;border-radius:8px;padding:8px;border:1px solid #e8e8e8">
+            <div style="font-size:15px;font-weight:700" id="mg-label-${r.id}">-</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">마진금액</div>
+          </div>
+        </div>
+      </div>`:''}
+      <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;background:#f9f9f9;border-radius:8px;padding:10px 6px">
+        <div><div class="sv">${r.cost?Math.round(r.cost/10).toLocaleString()+'원':'-'}</div><div class="sl">원가/100g</div></div>
+        <div><div class="sv">${r.sp?Math.round(r.sp).toLocaleString()+'원':'-'}</div><div class="sl">판매가/100g</div></div>
+        <div><div class="sv" style="color:${r.mg==null?'#111':r.mg>=0?'#16a34a':'#dc2626'}">${r.mg!=null?Math.round(r.mg).toLocaleString()+'원':'-'}</div><div class="sl">마진금액</div></div>
+      </div>
+      ${r.memo?`<div class="memo-text">${r.memo}</div>`:''}
+      <div class="rec-actions">
+        <button class="action-btn edit" onclick="editRec(${r.id})">✏️ 수정</button>
+        <button class="action-btn del" onclick="delRec(${r.id})">🗑 삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+let sumTab='part';
+function setSumTab(t){
+  sumTab=t;
+  $('sum-tab-part').style.background=t==='part'?'#111':'transparent';
+  $('sum-tab-part').style.color=t==='part'?'#fff':'#888';
+  $('sum-tab-detail').style.background=t==='detail'?'#111':'transparent';
+  $('sum-tab-detail').style.color=t==='detail'?'#fff':'#888';
+  renderSum();
+}
+
+function renderSum(){
+  const recs=getRecs();
+  const el=$('sum-wrap');
+  if(!recs.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>데이터가 없어요</div>';return;
+  }
+  const avg=arr=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
+
+  function makeCard(label, rs, count){
+    const costs=rs.filter(r=>r.cost).map(r=>r.cost);
+    const mgrs=rs.filter(r=>r.mgr!=null).map(r=>r.mgr);
+    const mrates=rs.filter(r=>r.mrate!=null).map(r=>r.mrate);
+    const ac=avg(costs),al=avg(rs.map(r=>r.lrate)),am=avg(mgrs),am2=avg(mrates);
+    const totalMg=rs.filter(r=>r.mg!=null).reduce((a,r)=>a+(r.mg||0),0);
+    const targetMgr=parseInt($('margin-slider').value)/100;
+    // 권장 판매가: 원가(원/100g) / (1 - 목표마진율)
+    const ac100=ac?ac/10:null;
+    const recPrice=ac100?Math.round(ac100/(1-targetMgr)):null;
+    // 현재 실제 판매가 평균
+    const sps=rs.filter(r=>r.sp).map(r=>r.sp);
+    const avgSp=avg(sps);
+    const priceDiff=recPrice&&avgSp?recPrice-Math.round(avgSp):null;
+    // 권장가 기준 예상 마진: 생산중량 합계 기준
+    const totalProd=rs.reduce((a,r)=>a+(r.prod||0),0);
+    const totalBuy=rs.reduce((a,r)=>a+(r.tbuy||0),0);
+    return`<div class="sum-card">
+      <div class="sum-title">${label} <span style="font-size:12px;font-weight:400;color:#888">${count}건</span></div>
+      <div class="sum-row"><span class="sum-k">평균 로스율</span><span class="sum-v">${al!=null?al.toFixed(1)+'%':'-'}</span></div>
+      ${am2!=null?`<div class="sum-row"><span class="sum-k">평균 수분로스율</span><span class="sum-v">${am2.toFixed(1)}%</span></div>`:''}
+      <div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:8px;padding:10px 12px;margin:8px 0">
+        <div style="font-size:11px;font-weight:600;color:#6366f1;margin-bottom:8px">원가 vs 판매가 비교</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:center">
+          <div style="background:#fff;border-radius:6px;padding:8px">
+            <div style="font-size:16px;font-weight:700;color:#111">${ac100?Math.round(ac100).toLocaleString()+'원':'-'}</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">실제원가/100g</div>
+          </div>
+          <div style="background:#fff;border-radius:6px;padding:8px">
+            <div style="font-size:16px;font-weight:700;color:#111">${avgSp?Math.round(avgSp).toLocaleString()+'원':'-'}</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">평균판매가/100g</div>
+          </div>
+        </div>
+        ${ac100&&avgSp?`<div style="text-align:center;margin-top:6px;font-size:12px;color:${avgSp-ac100>=0?'#16a34a':'#dc2626'};font-weight:600">
+          마진 ${Math.round(avgSp-ac100).toLocaleString()}원/100g · ${am!=null?am.toFixed(1)+'%':'-'}
+        </div>`:''}
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;color:#16a34a;margin-bottom:6px">목표 마진율 ${Math.round(targetMgr*100)}% 기준 권장 판매가</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:#555">권장 판매가</span>
+          <span style="font-size:18px;font-weight:700;color:#111">${recPrice?recPrice.toLocaleString()+'원/100g':'-'}</span>
+        </div>
+        ${priceDiff!=null?`<div style="font-size:12px;color:${priceDiff>0?'#dc2626':priceDiff<0?'#2563eb':'#888'};margin-top:4px;text-align:right">
+          현재 평균 대비 ${priceDiff>0?'+':''}${priceDiff.toLocaleString()}원
+        </div>`:''}
+        ${recPrice&&totalProd?`<div style="border-top:1px dashed #bbf7d0;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:#555">권장가 기준 예상 마진</span>
+          <span style="font-size:15px;font-weight:700;color:#16a34a">${Math.round(recPrice*totalProd*10-totalBuy).toLocaleString()}원</span>
+        </div>`:''}
+      </div>
+      <div class="sum-row"><span class="sum-k">누적 마진</span><span class="sum-v" style="color:${totalMg>=0?'#16a34a':'#dc2626'}">${Math.round(totalMg).toLocaleString()}원</span></div>
+    </div>`;
+  }
+
+  if(sumTab==='part'){
+    const byPart={};
+    recs.forEach(r=>{if(!byPart[r.part])byPart[r.part]=[];byPart[r.part].push(r)});
+    el.innerHTML=Object.entries(byPart)
+      .sort((a,b)=>b[1].length-a[1].length)
+      .map(([part,rs])=>makeCard(part,rs,rs.length)).join('');
+  } else {
+    const byPartGrade={};
+    recs.forEach(r=>{
+      const key=r.part+(r.grade?' · '+r.grade:'');
+      if(!byPartGrade[key])byPartGrade[key]=[];
+      byPartGrade[key].push(r);
+    });
+    // 부위별로 그룹핑해서 보여주기
+    const byPart={};
+    recs.forEach(r=>{if(!byPart[r.part])byPart[r.part]=[];byPart[r.part].push(r)});
+    let out='';
+    Object.keys(byPart).sort().forEach(part=>{
+      const grades={};
+      byPart[part].forEach(r=>{
+        const g=r.grade||'등급없음';
+        if(!grades[g])grades[g]=[];
+        grades[g].push(r);
+      });
+      // 부위 헤더
+      out+=`<div style="font-size:12px;font-weight:600;color:#888;letter-spacing:.05em;text-transform:uppercase;margin:14px 0 6px">${part}</div>`;
+      Object.entries(grades).forEach(([grade,rs])=>{
+        out+=makeCard(grade,rs,rs.length);
+      });
+    });
+    el.innerHTML=out;
+  }
+}
+
+
+$('w-part').onchange=function(){
+  $('w-custom-wrap').style.display=this.value==='직접입력'?'block':'none';
+};
+
+function calcWaste(){
+  const bp=parseFloat($('w-bp').value)||0;
+  const amt=(parseFloat($('w-amt').value)||0)/1000;
+  const loss=Math.round(bp*amt);
+  $('w-loss-amt').textContent=loss?loss.toLocaleString()+'원':'-';
+}
+
+function getWastes(){try{return JSON.parse(localStorage.getItem('hw_wastes')||'[]')}catch(e){return[]}}
+function setWastes(r){localStorage.setItem('hw_wastes',JSON.stringify(r))}
+
+function saveWaste(){
+  const part=$('w-part').value==='직접입력'?$('w-custom').value.trim():$('w-part').value;
+  if(!part){toast('부위를 선택해주세요');return}
+  const amt=parseFloat($('w-amt').value)||0;
+  if(!amt){toast('폐기중량을 입력해주세요');return}
+  const bp=parseFloat($('w-bp').value)||0;
+  const lossAmt=Math.round(bp*(amt/1000));
+  const rec={
+    id:Date.now(),
+    date:$('w-date').value||new Date().toISOString().slice(0,10),
+    part,grade:$('w-grade').value,
+    bp,amt,lossAmt,
+    reason:$('w-reason').value,
+    memo:$('w-memo').value
+  };
+  const ws=getWastes();ws.unshift(rec);setWastes(ws);
+  toast('폐기 기록됐어요');
+  ['w-part','w-grade','w-bp','w-amt','w-reason','w-memo','w-custom'].forEach(id=>$(id).value='');
+  $('w-custom-wrap').style.display='none';
+  $('w-loss-amt').textContent='-';
+  $('w-date').value=new Date().toISOString().slice(0,10);
+  renderWaste();
+}
+
+function delWaste(id){
+  if(!confirm('삭제할까요?'))return;
+  setWastes(getWastes().filter(r=>r.id!==id));
+  renderWaste();
+}
+
+let wasteTab='month';
+function setWasteTab(t){
+  wasteTab=t;
+  $('waste-tab-month').style.background=t==='month'?'#111':'transparent';
+  $('waste-tab-month').style.color=t==='month'?'#fff':'#888';
+  $('waste-tab-total').style.background=t==='total'?'#111':'transparent';
+  $('waste-tab-total').style.color=t==='total'?'#fff':'#888';
+  renderWaste();
+}
+
+function renderWaste(){
+  const ws=getWastes();
+  const listEl=$('waste-list');
+  const sumEl=$('waste-summary');
+
+  if(!ws.length){
+    listEl.innerHTML='<div class="empty" style="padding:20px">기록이 없어요</div>';
+    sumEl.innerHTML='';
+    return;
+  }
+
+  const now=new Date();
+  const thisMonth=now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+
+  // 이번달 / 전체 선택
+  const targetRecs=wasteTab==='month'?ws.filter(r=>r.date&&r.date.startsWith(thisMonth)):ws;
+  const totalLoss=targetRecs.reduce((a,r)=>a+(r.lossAmt||0),0);
+  const totalAmt=targetRecs.reduce((a,r)=>a+(r.amt||0),0);
+
+  // 부위별 집계
+  const byPart={};
+  targetRecs.forEach(r=>{
+    if(!byPart[r.part])byPart[r.part]={amt:0,loss:0,count:0};
+    byPart[r.part].amt+=r.amt;
+    byPart[r.part].loss+=r.lossAmt||0;
+    byPart[r.part].count++;
+  });
+
+  // 월별 집계 (전체탭일 때)
+  const byMonth={};
+  if(wasteTab==='total'){
+    ws.forEach(r=>{
+      if(!r.date)return;
+      const m=r.date.slice(0,7);
+      if(!byMonth[m])byMonth[m]={amt:0,loss:0};
+      byMonth[m].amt+=r.amt;
+      byMonth[m].loss+=r.lossAmt||0;
+    });
+  }
+
+  const periodLabel=wasteTab==='month'?'이번 달':'전체 누적';
+
+  sumEl.innerHTML=`
+    <div class="auto-grid" style="margin-bottom:12px">
+      <div class="ac"><div class="ac-label">${periodLabel} 폐기량</div><div class="ac-val neg">${(totalAmt/1000).toFixed(2)}kg</div></div>
+      <div class="ac"><div class="ac-label">${periodLabel} 손실액</div><div class="ac-val neg">${totalLoss.toLocaleString()}원</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:#888;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">부위별</div>
+    ${Object.entries(byPart).sort((a,b)=>b[1].loss-a[1].loss).map(([part,d])=>`
+      <div class="sum-card" style="margin-bottom:6px">
+        <div class="sum-row"><span class="sum-k" style="font-weight:600">${part}</span><span style="font-size:11px;color:#888">${d.count}건</span></div>
+        <div class="sum-row"><span class="sum-k">폐기량</span><span class="sum-v">${(d.amt/10).toFixed(1)}kg</span></div>
+        <div class="sum-row"><span class="sum-k">손실액</span><span class="sum-v" style="color:#dc2626">${d.loss.toLocaleString()}원</span></div>
+      </div>
+    `).join('')}
+    ${wasteTab==='total'&&Object.keys(byMonth).length>0?`
+      <div style="font-size:11px;font-weight:600;color:#888;letter-spacing:.05em;text-transform:uppercase;margin:14px 0 6px">월별 추이</div>
+      ${Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,d])=>`
+        <div class="sum-card" style="margin-bottom:6px">
+          <div class="sum-row"><span class="sum-k" style="font-weight:600">${m}</span><span class="sum-v" style="color:#dc2626">${d.loss.toLocaleString()}원</span></div>
+          <div class="sum-row"><span class="sum-k">폐기량</span><span class="sum-v">${(d.amt/10).toFixed(1)}kg</span></div>
+        </div>
+      `).join('')}
+    `:''}
+  `;
+
+  listEl.innerHTML=ws.slice(0,30).map(r=>`
+    <div class="record">
+      <div class="rec-head">
+        <div>
+          <div class="rec-title">${r.part}${r.grade?' · '+r.grade:''}</div>
+          <div class="rec-date">${r.date}${r.reason?' · '+r.reason:''}</div>
+        </div>
+        <button class="del-btn" onclick="delWaste(${r.id})">×</button>
+      </div>
+      <div class="chips">
+        <span class="chip">${(r.amt/1000).toFixed(3)}kg 폐기</span>
+        ${r.bp?`<span class="chip">${Math.round(r.bp).toLocaleString()}원/kg</span>`:''}
+      </div>
+      <div style="text-align:right;font-size:16px;font-weight:600;color:#dc2626">-${(r.lossAmt||0).toLocaleString()}원</div>
+      ${r.memo?`<div class="memo-text">${r.memo}</div>`:''}
+    </div>
+  `).join('');
+}
+
+
+
+function saveToGDrive(){
+  // 엑셀 파일 생성
+  const recs = getRecs();
+  const wastes = getWastes();
+  const targetMgr = parseInt($('margin-slider').value)/100;
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+
+  const recHeaders = ['날짜','부위','등급','매입단가(원/kg)','매입중량(kg)','작업전실측(g)',
+    '로스중량(g)','전환로스1(g)','전환로스2(g)','전환로스3(g)',
+    '생산중량(kg)','총매입가(원)','판매단가(원/100g)',
+    '전환로스1판매가','전환로스2판매가','전환로스3판매가',
+    '총판매액(원)','실제원가(원/kg)','실제원가(원/100g)','로스율(%)','마진(원)','마진율(%)','비고'];
+  const recRows = recs.map(r=>[
+    r.date, r.part, r.grade, r.bp, r.w, r.mw_g||'',
+    r.l_g||'', r.c1_g||'', r.c2_g||'', r.c3_g||'',
+    r.prod, r.tbuy||'', r.sp||'',
+    r.c1p||'', r.c2p||'', r.c3p||'',
+    r.tsell||'', r.cost||'', r.cost?Math.round(r.cost/10):'',
+    r.lrate?r.lrate.toFixed(1):'',
+    r.mg!=null?r.mg:'', r.mgr!=null?r.mgr.toFixed(1):'',
+    r.memo||''
+  ]);
+
+  const byPart={};
+  recs.forEach(r=>{if(!byPart[r.part])byPart[r.part]=[];byPart[r.part].push(r)});
+  const sumHeaders = ['부위','데이터건수','평균원가(원/100g)','평균로스율(%)','실제평균마진율(%)',
+    `권장판매가(${Math.round(targetMgr*100)}%마진기준,원/100g)`,'현재평균판매가(원/100g)','차이(원)','누적마진(원)'];
+  const sumRows = Object.entries(byPart).map(([part,rs])=>{
+    const costs=rs.filter(r=>r.cost).map(r=>r.cost);
+    const mgrs=rs.filter(r=>r.mgr!=null).map(r=>r.mgr);
+    const sps=rs.filter(r=>r.sp).map(r=>r.sp);
+    const ac=avg(costs); const am=avg(mgrs); const asp=avg(sps);
+    const ac100=ac?Math.round(ac/10):null;
+    const recPrice=ac100?Math.round(ac100/(1-targetMgr)):null;
+    const al=avg(rs.map(r=>r.lrate));
+    const totalMg=rs.filter(r=>r.mg!=null).reduce((a,r)=>a+(r.mg||0),0);
+    return [part, rs.length, ac100||'', al?al.toFixed(1):'', am?am.toFixed(1):'',
+      recPrice||'', asp?Math.round(asp):'',
+      recPrice&&asp?recPrice-Math.round(asp):'', Math.round(totalMg)];
+  });
+
+  const wasteHeaders = ['날짜','부위','등급','매입단가(원/kg)','폐기중량(g)','폐기중량(kg)','폐기손실액(원)','폐기사유','비고'];
+  const wasteRows = wastes.map(r=>[
+    r.date, r.part, r.grade||'', r.bp||'',
+    r.amt, (r.amt/1000).toFixed(3), r.lossAmt||'', r.reason||'', r.memo||''
+  ]);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([recHeaders,...recRows]), '로스율 관찰일지');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([sumHeaders,...sumRows]), '부위별 요약');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([wasteHeaders,...wasteRows]), '폐기 대장');
+
+  // ArrayBuffer로 변환
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([wbout], {type:'application/octet-stream'});
+
+  const today = new Date().toISOString().slice(0,10);
+  const filename = `다래정성_관찰일지_${today}.xlsx`;
+
+  // 구글 드라이브 Picker API 없이 — 파일 만들어서 드라이브 업로드 페이지로 안내
+  // 실용적 방법: 파일 다운로드 + 드라이브 열기
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  setTimeout(()=>{
+    if(confirm('파일이 저장됐어요!\n구글 드라이브에 업로드할까요?\n(드라이브 앱이 열려요)')){
+      window.open('https://drive.google.com/drive/my-drive', '_blank');
+    }
+  }, 800);
+}
+
+function exportExcel(){
+  const recs = getRecs();
+  const wastes = getWastes();
+  const targetMgr = parseInt($('margin-slider').value)/100;
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+
+  // ── 시트1: 로스율 관찰일지 ──
+  const recHeaders = ['날짜','부위','등급','매입단가(원/kg)','매입중량(kg)','작업전실측(g)',
+    '로스중량(g)','전환로스1(g)','전환로스2(g)','전환로스3(g)',
+    '생산중량(kg)','총매입가(원)','판매단가(원/100g)',
+    '전환로스1판매가','전환로스2판매가','전환로스3판매가',
+    '총판매액(원)','실제원가(원/kg)','실제원가(원/100g)','로스율(%)','마진(원)','마진율(%)','비고'];
+  const recRows = recs.map(r=>[
+    r.date, r.part, r.grade, r.bp, r.w, r.mw_g||'',
+    r.l_g||'', r.c1_g||'', r.c2_g||'', r.c3_g||'',
+    r.prod, r.tbuy||'', r.sp||'',
+    r.c1p||'', r.c2p||'', r.c3p||'',
+    r.tsell||'', r.cost||'', r.cost?Math.round(r.cost/10):'',
+    r.lrate?r.lrate.toFixed(1):'',
+    r.mg!=null?r.mg:'', r.mgr!=null?r.mgr.toFixed(1):'',
+    r.memo||''
+  ]);
+
+  // ── 시트2: 부위별 요약 + 권장 판매가 ──
+  const byPart={};
+  recs.forEach(r=>{if(!byPart[r.part])byPart[r.part]=[];byPart[r.part].push(r)});
+  const sumHeaders = ['부위','데이터건수','평균원가(원/100g)','평균로스율(%)','실제평균마진율(%)',
+    `권장판매가(${Math.round(targetMgr*100)}%마진기준,원/100g)`,'현재평균판매가(원/100g)','차이(원)','누적마진(원)'];
+  const sumRows = Object.entries(byPart).map(([part,rs])=>{
+    const costs=rs.filter(r=>r.cost).map(r=>r.cost);
+    const mgrs=rs.filter(r=>r.mgr!=null).map(r=>r.mgr);
+    const sps=rs.filter(r=>r.sp).map(r=>r.sp);
+    const ac=avg(costs); const am=avg(mgrs); const asp=avg(sps);
+    const ac100=ac?Math.round(ac/10):null;
+    const recPrice=ac100?Math.round(ac100/(1-targetMgr)):null;
+    const al=avg(rs.map(r=>r.lrate));
+    const totalMg=rs.filter(r=>r.mg!=null).reduce((a,r)=>a+(r.mg||0),0);
+    return [
+      part, rs.length,
+      ac100||'', al?al.toFixed(1):'', am?am.toFixed(1):'',
+      recPrice||'',
+      asp?Math.round(asp):'',
+      recPrice&&asp?recPrice-Math.round(asp):'',
+      Math.round(totalMg)
+    ];
+  });
+
+  // ── 시트3: 폐기 대장 ──
+  const wasteHeaders = ['날짜','부위','등급','매입단가(원/kg)','폐기중량(g)','폐기중량(kg)','폐기손실액(원)','폐기사유','비고'];
+  const wasteRows = wastes.map(r=>[
+    r.date, r.part, r.grade||'', r.bp||'',
+    r.amt, (r.amt/1000).toFixed(3),
+    r.lossAmt||'', r.reason||'', r.memo||''
+  ]);
+
+  // 부위별 폐기 요약
+  const wasteByPart={};
+  wastes.forEach(r=>{
+    if(!wasteByPart[r.part])wasteByPart[r.part]={amt:0,loss:0,count:0};
+    wasteByPart[r.part].amt+=r.amt;
+    wasteByPart[r.part].loss+=r.lossAmt||0;
+    wasteByPart[r.part].count++;
+  });
+  const wasteSumHeaders = ['부위','폐기건수','총폐기량(g)','총폐기량(kg)','총손실액(원)'];
+  const wasteSumRows = Object.entries(wasteByPart)
+    .sort((a,b)=>b[1].loss-a[1].loss)
+    .map(([part,d])=>[part, d.count, d.amt, (d.amt/1000).toFixed(3), d.loss]);
+
+  const wb = XLSX.utils.book_new();
+
+  // 시트1
+  const ws1 = XLSX.utils.aoa_to_sheet([recHeaders, ...recRows]);
+  ws1['!cols'] = recHeaders.map((_,i)=>({wch: i===0?12:i===1?8:i===2?8:12}));
+  XLSX.utils.book_append_sheet(wb, ws1, '로스율 관찰일지');
+
+  // 시트2
+  const ws2 = XLSX.utils.aoa_to_sheet([sumHeaders, ...sumRows]);
+  ws2['!cols'] = sumHeaders.map(()=>({wch:16}));
+  XLSX.utils.book_append_sheet(wb, ws2, '부위별 요약');
+
+  // 시트3
+  const ws3 = XLSX.utils.aoa_to_sheet([wasteHeaders, ...wasteRows]);
+  XLSX.utils.book_append_sheet(wb, ws3, '폐기 대장');
+
+  // 시트4: 폐기 부위별 요약
+  const ws4 = XLSX.utils.aoa_to_sheet([wasteSumHeaders, ...wasteSumRows]);
+  XLSX.utils.book_append_sheet(wb, ws4, '폐기 요약');
+
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `다래정성_관찰일지_${today}.xlsx`);
+}
+
+
+function calcBarMargin(id, cost100, prod, tbuy, val){
+  const mgr = parseInt(val);
+  const cost = cost100/10; // 원/100g
+  const recPrice = Math.round(cost/(1-mgr/100));
+  const expectedSell = Math.round(prod * recPrice * 10);
+  const margin = expectedSell - (tbuy||0);
+  const color = mgr>=20?'#16a34a':mgr>=10?'#f59e0b':'#dc2626';
+  const lbl = document.getElementById('mgr-label-'+id);
+  const mgl = document.getElementById('mg-label-'+id);
+  const prl = document.getElementById('price-label-'+id);
+  if(lbl) lbl.textContent = mgr+'%';
+  if(prl) prl.textContent = recPrice.toLocaleString()+'원';
+  if(mgl){ mgl.textContent = margin.toLocaleString()+'원'; mgl.style.color=color; }
+}
+
+function updateMarginSlider(){
+  $('margin-target-label').textContent=parseInt($('margin-slider').value)+'%';
+  renderSum();
+}
+
+function toast(msg){
+  const t=$('toast-el');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+$('i-date').value=new Date().toISOString().slice(0,10);
+$('w-date').value=new Date().toISOString().slice(0,10);
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(()=>console.log('SW registered'))
+      .catch(e=>console.log('SW error', e));
+  });
+}
+</script>
+</body>
+</html>
